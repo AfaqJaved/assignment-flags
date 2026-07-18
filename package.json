@@ -1,0 +1,52 @@
+{
+  "name": "@pikslots/source",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {
+    "build": "bunx nx run-many -t build",
+    "dev": "bunx nx run-many -t dev --no-tui",
+    "watch": "bunx nx run-many -t watch --no-tui",
+    "format": "bunx nx run-many -t format",
+    "lint": "bunx nx run-many -t lint",
+    "prepare": "husky",
+    "docker:run": "docker compose --env-file .env -f docker/postgres.yml -f docker/redis.yml -f docker/mailpit.yml up -d",
+    "docker:down": "docker compose --env-file .env -f docker/postgres.yml -f docker/redis.yml -f docker/mailpit.yml down ",
+    "docker:stack:up": "docker compose -f docker/docker-compose.yml up -d --build",
+    "docker:stack:down": "docker compose -f docker/docker-compose.yml down",
+    "docker:stack:logs": "docker compose -f docker/docker-compose.yml logs -f api"
+  },
+  "private": true,
+  "packageManager": "bun@1.3.9",
+  "engines": {
+    "npm": "please-use-bun",
+    "yarn": "please-use-bun",
+    "pnpm": "please-use-bun"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@eslint/js": "^9.8.0",
+    "@nx/eslint": "22.7.1",
+    "@nx/eslint-plugin": "22.7.1",
+    "@nx/js": "22.7.1",
+    "@nx/vitest": "22.7.1",
+    "@swc-node/register": "~1.11.1",
+    "@swc/core": "~1.15.5",
+    "@swc/helpers": "~0.5.18",
+    "@types/node": "20.19.9",
+    "@vitest/coverage-v8": "~4.1.0",
+    "eslint": "^9.8.0",
+    "eslint-config-prettier": "^10.0.0",
+    "husky": "^9.1.7",
+    "jsonc-eslint-parser": "^2.1.0",
+    "nx": "22.7.1",
+    "prettier": "~3.6.2",
+    "tslib": "^2.3.0",
+    "typescript": "~5.9.2",
+    "typescript-eslint": "^8.40.0",
+    "vite": "^8.0.0",
+    "vitest": "~4.1.0"
+  },
+  "workspaces": [
+    "packages/*"
+  ]
+}

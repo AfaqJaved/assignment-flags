@@ -1,0 +1,94 @@
+# explicit project name — without this, Compose derives the project name from
+# this file's directory ("docker"), which collides with the separate
+# docker/postgres.yml + docker/redis.yml dev-infra project living in the same
+# folder, causing `up`/`down` here to recreate/remove *their* containers
+# instead of this stack's own.
+name: flags-stack
+
+services:
+  postgres:
+    image: postgres:18
+    container_name: flags_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-flags}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      # postgres:18+ images store data under a version-specific subdirectory of
+      # /var/lib/postgresql itself now, not /var/lib/postgresql/data — mounting
+      # at /data errors out on this image ("PostgreSQL data in an unused mount")
+      - flags_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-flags}',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8.0.6
+    container_name: flags_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-password} --save 60 1
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - flags_redis_data:/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'redis-cli -a ${REDIS_PASSWORD:-password} ping | grep -q PONG',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: flags_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # service names, not localhost — resolved via the compose network
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-flags}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-password}
+      BACKEND_PUBLIC_URL: ${BACKEND_PUBLIC_URL:-http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-true}
+    ports:
+      - '${API_PORT:-3000}:3000'
+    healthcheck:
+      # the runtime image is oven/bun:1-slim, which has neither curl nor wget —
+      # bun itself is always present, so use its fetch() as the probe
+      test:
+        [
+          'CMD',
+          'bun',
+          '-e',
+          "fetch('http://localhost:3000/api/v1/health').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  flags_postgres_data:
+  flags_redis_data:

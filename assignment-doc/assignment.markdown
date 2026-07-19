@@ -167,13 +167,13 @@ The service needs to be multi-tenant (each application is a tenant), highly avai
 
 ## Suggested Time Allocation
 
-| Phase | Time |
-|---|---|
-| System design, data modeling, IaC planning | 1.5 – 2 hrs |
-| Tenant management + feature flag CRUD | 2 – 2.5 hrs |
-| Flag evaluation engine + audit logging | 1.5 – 2 hrs |
+| Phase                                        | Time        |
+| -------------------------------------------- | ----------- |
+| System design, data modeling, IaC planning   | 1.5 – 2 hrs |
+| Tenant management + feature flag CRUD        | 2 – 2.5 hrs |
+| Flag evaluation engine + audit logging       | 1.5 – 2 hrs |
 | Docker + IaC + CI/CD + blue-green deployment | 2 – 2.5 hrs |
-| Testing + observability + documentation | 1.5 – 2 hrs |
+| Testing + observability + documentation      | 1.5 – 2 hrs |
 
 ---
 

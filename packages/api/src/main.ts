@@ -40,7 +40,10 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: (origin, callback) => {
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, origin?: boolean) => void,
+    ) => {
       // requests with no origin (e.g. curl, server-to-server) are allowed
       if (!origin || corsOriginMatchers.some((re) => re.test(origin))) {
         callback(null, true);
@@ -75,4 +78,4 @@ async function bootstrap() {
   await app.listen(port);
 }
 
-bootstrap();
+void bootstrap();

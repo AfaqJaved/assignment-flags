@@ -1,6 +1,7 @@
 # Custom Booking Status Workflow
 
 ## Context
+
 Businesses need to define their own booking statuses (Pending, Confirmed, Paid, etc.). Currently the `bookings` table has no `status` field. This feature introduces a `booking_statuses` domain — each business owns an ordered list of statuses. Some are system-provided (undeletable) and one is the default applied to every new booking.
 
 ---
@@ -8,28 +9,31 @@ Businesses need to define their own booking statuses (Pending, Confirmed, Paid, 
 ## Architecture Decision
 
 **New `booking_statuses` table (not JSONB in business settings)**
+
 - Allows filtering/querying bookings by status efficiently
 - Relational integrity via FK on `bookings.status_id`
 
 **Lazy seeding of system defaults**
-- 5 system statuses are seeded automatically on the *first booking creation* per business
+
+- 5 system statuses are seeded automatically on the _first booking creation_ per business
 - `SeedDefaultStatusesUseCase` is idempotent — checks `hasAnyStatus(businessId)` before inserting
 - Avoids coupling to `RegisterBusinessUseCase`
 
 **Single default enforced at DB level**
+
 - Partial unique index: `UNIQUE (business_id) WHERE is_default = true AND is_deleted = false`
 
 ---
 
 ## System Default Statuses (seeded per business)
 
-| Name | Color | Order | isDefault | isSystem |
-|---|---|---|---|---|
-| Pending | `#F59E0B` | 1 | ✅ | ✅ |
-| Confirmed | `#3B82F6` | 2 | | ✅ |
-| Paid | `#10B981` | 3 | | ✅ |
-| No Show | `#6B7280` | 4 | | ✅ |
-| Cancelled | `#EF4444` | 5 | | ✅ |
+| Name      | Color     | Order | isDefault | isSystem |
+| --------- | --------- | ----- | --------- | -------- |
+| Pending   | `#F59E0B` | 1     | ✅        | ✅       |
+| Confirmed | `#3B82F6` | 2     |           | ✅       |
+| Paid      | `#10B981` | 3     |           | ✅       |
+| No Show   | `#6B7280` | 4     |           | ✅       |
+| Cancelled | `#EF4444` | 5     |           | ✅       |
 
 Users can add their own custom statuses after these.
 
@@ -38,6 +42,7 @@ Users can add their own custom statuses after these.
 ## Database Schema
 
 ### New table: `booking_statuses`
+
 ```sql
 id             uuid PRIMARY KEY
 business_id    uuid FK → businesses.id ON DELETE CASCADE
@@ -51,6 +56,7 @@ created_at, created_by, updated_at, updated_by, deleted_at, deleted_by, is_delet
 ```
 
 **Indexes:**
+
 ```sql
 UNIQUE INDEX (business_id, name)                                         -- no duplicates
 UNIQUE INDEX (business_id) WHERE is_default = true AND is_deleted = false -- single default
@@ -58,6 +64,7 @@ INDEX (business_id, sort_order)                                          -- orde
 ```
 
 ### Modified: `bookings` table
+
 ```sql
 ADD COLUMN status_id uuid REFERENCES booking_statuses(id) ON DELETE RESTRICT
 ```
@@ -67,6 +74,7 @@ ADD COLUMN status_id uuid REFERENCES booking_statuses(id) ON DELETE RESTRICT
 ## New Files
 
 ### Domain (`packages/domain/src/booking-status/`)
+
 ```
 booking-status.entity.ts          BookingStatusProps, BookingStatus class, SYSTEM_BOOKING_STATUSES constant
 errors/index.ts                   NotFound, AlreadyExists, IsSystem, IsDefault errors
@@ -82,6 +90,7 @@ index.ts
 ```
 
 ### Database
+
 ```
 packages/api/src/shared/database/schema/booking-status.table.ts
 packages/api/src/shared/database/migrations/20260620T120000-booking_status_table.ts
@@ -89,6 +98,7 @@ packages/api/src/shared/database/migrations/20260620T130000-booking_add_status_i
 ```
 
 ### API Module (`packages/api/src/modules/booking-status/`)
+
 ```
 booking-status.module.ts
 booking-status.controller.ts
@@ -108,6 +118,7 @@ errors/booking-status.errors.map.ts
 ```
 
 ### Shared + UI
+
 ```
 packages/shared/src/api/booking-status/booking-status.endpoints.ts
 packages/shared/src/api/booking-status/booking-status.types.ts
@@ -120,30 +131,30 @@ packages/ui/src/modules/settings/booking-preferences/booking-statuses/booking-st
 
 ## Modified Files
 
-| File | Change |
-|---|---|
-| `packages/domain/src/booking/booking.entity.ts` | Add `statusId: string` to props, inputs, `create()`, `update()` |
-| `packages/domain/src/index.ts` | Export `booking-status` |
-| `packages/api/src/shared/database/schema/booking.table.ts` | Add `status_id: string \| null` |
-| `packages/api/src/shared/database/schema/index.ts` | Register `booking_statuses` on `PikSlotsDatabase` |
-| `packages/api/src/modules/booking/mappers/booking.database.mapper.ts` | Map `status_id ↔ statusId` |
-| `packages/api/src/modules/booking/repository/booking.repository.impl.ts` | Include `status_id` in queries |
+| File                                                                         | Change                                                                        |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `packages/domain/src/booking/booking.entity.ts`                              | Add `statusId: string` to props, inputs, `create()`, `update()`               |
+| `packages/domain/src/index.ts`                                               | Export `booking-status`                                                       |
+| `packages/api/src/shared/database/schema/booking.table.ts`                   | Add `status_id: string \| null`                                               |
+| `packages/api/src/shared/database/schema/index.ts`                           | Register `booking_statuses` on `PikSlotsDatabase`                             |
+| `packages/api/src/modules/booking/mappers/booking.database.mapper.ts`        | Map `status_id ↔ statusId`                                                   |
+| `packages/api/src/modules/booking/repository/booking.repository.impl.ts`     | Include `status_id` in queries                                                |
 | `packages/api/src/modules/booking/usecases/register.booking.usecase.impl.ts` | Inject seed use case → resolve default status id → pass to `Booking.create()` |
-| `packages/api/src/pikslots.app.module.ts` | Import `BookingStatusModule` |
-| `packages/shared/src/api/index.ts` | Export booking-status contracts |
+| `packages/api/src/pikslots.app.module.ts`                                    | Import `BookingStatusModule`                                                  |
+| `packages/shared/src/api/index.ts`                                           | Export booking-status contracts                                               |
 
 ---
 
 ## Use Cases
 
-| Use Case | Auth | Key Rules |
-|---|---|---|
-| `SeedDefaultStatuses` | internal | Idempotent — `hasAnyStatus()` check before insert |
-| `GetBookingStatuses` | same business | Ordered by `sort_order` asc |
-| `CreateBookingStatus` | same business | `max(sort_order)+1`; name uniqueness check |
-| `UpdateBookingStatus` | same business | Cannot rename to an existing name |
+| Use Case                 | Auth          | Key Rules                                                               |
+| ------------------------ | ------------- | ----------------------------------------------------------------------- |
+| `SeedDefaultStatuses`    | internal      | Idempotent — `hasAnyStatus()` check before insert                       |
+| `GetBookingStatuses`     | same business | Ordered by `sort_order` asc                                             |
+| `CreateBookingStatus`    | same business | `max(sort_order)+1`; name uniqueness check                              |
+| `UpdateBookingStatus`    | same business | Cannot rename to an existing name                                       |
 | `ReorderBookingStatuses` | same business | Accepts `orderedIds: string[]`; reassigns `sort_order` in a transaction |
-| `DeleteBookingStatus` | same business | Blocked if `is_system=true` OR `is_default=true` |
+| `DeleteBookingStatus`    | same business | Blocked if `is_system=true` OR `is_default=true`                        |
 
 ---
 

@@ -21,15 +21,15 @@ It is used solely to interpret what `"09:00"` means in absolute time (UTC). The 
 
 ### Setup
 
-| | Value |
-|---|---|
-| Provider timezone | `Asia/Karachi` (UTC+5) |
-| Provider working hours | `09:00` – `17:00` (local) |
-| Existing booking | `10:00` – `11:00` Karachi time |
-| Slot duration | 60 mins |
-| Buffer time | 0 mins |
-| Date requested | `2025-06-26` |
-| Visitor timezone | `America/New_York` (UTC-4, EDT) |
+|                        | Value                           |
+| ---------------------- | ------------------------------- |
+| Provider timezone      | `Asia/Karachi` (UTC+5)          |
+| Provider working hours | `09:00` – `17:00` (local)       |
+| Existing booking       | `10:00` – `11:00` Karachi time  |
+| Slot duration          | 60 mins                         |
+| Buffer time            | 0 mins                          |
+| Date requested         | `2025-06-26`                    |
+| Visitor timezone       | `America/New_York` (UTC-4, EDT) |
 
 ---
 
@@ -72,20 +72,21 @@ bookedSlots = [
 ### Step 4 — Generate slots (backend)
 
 Working window in UTC milliseconds:
+
 - `windowStart` = `04:00 UTC`
-- `windowEnd`   = `12:00 UTC`
+- `windowEnd` = `12:00 UTC`
 - Each slot = 60 mins
 
-| Slot (UTC) | Conflict? | Included? |
-|---|---|---|
-| 04:00 – 05:00 | No | ✅ |
-| 05:00 – 06:00 | Yes (booked) | ❌ |
-| 06:00 – 07:00 | No | ✅ |
-| 07:00 – 08:00 | No | ✅ |
-| 08:00 – 09:00 | No | ✅ |
-| 09:00 – 10:00 | No | ✅ |
-| 10:00 – 11:00 | No | ✅ |
-| 11:00 – 12:00 | No | ✅ |
+| Slot (UTC)    | Conflict?    | Included? |
+| ------------- | ------------ | --------- |
+| 04:00 – 05:00 | No           | ✅        |
+| 05:00 – 06:00 | Yes (booked) | ❌        |
+| 06:00 – 07:00 | No           | ✅        |
+| 07:00 – 08:00 | No           | ✅        |
+| 08:00 – 09:00 | No           | ✅        |
+| 09:00 – 10:00 | No           | ✅        |
+| 10:00 – 11:00 | No           | ✅        |
+| 11:00 – 12:00 | No           | ✅        |
 
 ---
 
@@ -112,22 +113,22 @@ The frontend knows the visitor's timezone (`America/New_York`, UTC-4 EDT) and co
 ```ts
 // Example using Intl.DateTimeFormat
 const display = (iso: string) =>
-  new Date(iso).toLocaleTimeString("en-US", {
-    timeZone: "America/New_York",
-    hour: "2-digit",
-    minute: "2-digit",
+  new Date(iso).toLocaleTimeString('en-US', {
+    timeZone: 'America/New_York',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 ```
 
 | What backend returned (UTC) | What New York visitor sees |
-|---|---|
-| 04:00 – 05:00 UTC | 12:00 AM – 1:00 AM |
-| 06:00 – 07:00 UTC | 2:00 AM – 3:00 AM |
-| 07:00 – 08:00 UTC | 3:00 AM – 4:00 AM |
-| 08:00 – 09:00 UTC | 4:00 AM – 5:00 AM |
-| 09:00 – 10:00 UTC | 5:00 AM – 6:00 AM |
-| 10:00 – 11:00 UTC | 6:00 AM – 7:00 AM |
-| 11:00 – 12:00 UTC | 7:00 AM – 8:00 AM |
+| --------------------------- | -------------------------- |
+| 04:00 – 05:00 UTC           | 12:00 AM – 1:00 AM         |
+| 06:00 – 07:00 UTC           | 2:00 AM – 3:00 AM          |
+| 07:00 – 08:00 UTC           | 3:00 AM – 4:00 AM          |
+| 08:00 – 09:00 UTC           | 4:00 AM – 5:00 AM          |
+| 09:00 – 10:00 UTC           | 5:00 AM – 6:00 AM          |
+| 10:00 – 11:00 UTC           | 6:00 AM – 7:00 AM          |
+| 11:00 – 12:00 UTC           | 7:00 AM – 8:00 AM          |
 
 The New York visitor sees available slots from **12:00 AM to 8:00 AM** their local time — because the Karachi provider only works 9 AM–5 PM their time, which overlaps only that window in New York.
 
@@ -148,9 +149,9 @@ The window would become `1 PM – 9 PM UTC` = `6 PM – 2 AM Karachi` — the pr
 
 ## Summary
 
-| Concern | Owner |
-|---|---|
+| Concern                                 | Owner                                    |
+| --------------------------------------- | ---------------------------------------- |
 | Interpreting `"09:00"` as absolute time | API (`command.timezone` = provider's TZ) |
-| Storing/fetching bookings | DB (always UTC) |
-| Generating and returning slots | API (always UTC) |
-| Displaying times to the visitor | Frontend (converts UTC → visitor's TZ) |
+| Storing/fetching bookings               | DB (always UTC)                          |
+| Generating and returning slots          | API (always UTC)                         |
+| Displaying times to the visitor         | Frontend (converts UTC → visitor's TZ)   |

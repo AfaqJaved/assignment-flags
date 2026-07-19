@@ -39,4 +39,15 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // supertest types `response.body` as `any` — every e2e test reads
+    // `.data`/`.statusCode` off it, which the unsafe-* rules can't verify
+    // statically. Relaxed here only, not project-wide.
+    files: ['test/**/*.e2e-test.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+    },
+  },
 );

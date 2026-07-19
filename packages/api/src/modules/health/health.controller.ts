@@ -19,7 +19,10 @@ import { HealthResponseDto } from './dto/health.response.dto';
 export class HealthController {
   @Get()
   @ApiOperation({ summary: 'Liveness check' })
-  @ApiOkResponse({ description: 'The app is running.', type: HealthResponseDto })
+  @ApiOkResponse({
+    description: 'The app is running.',
+    type: HealthResponseDto,
+  })
   check(): FlagsBaseResponse<HealthResponseDto> {
     return new FlagsBaseResponse(
       { status: 'ok', message: 'App is running' },

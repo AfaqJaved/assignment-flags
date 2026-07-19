@@ -66,9 +66,7 @@ describe('LoggingInterceptor', () => {
       ],
     };
 
-    interceptor
-      .intercept(context, createHandler(responseBody))
-      .subscribe();
+    interceptor.intercept(context, createHandler(responseBody)).subscribe();
 
     expect(logSpy).toHaveBeenCalledTimes(2);
     const responseLog = logSpy.mock.calls[1][0] as string;

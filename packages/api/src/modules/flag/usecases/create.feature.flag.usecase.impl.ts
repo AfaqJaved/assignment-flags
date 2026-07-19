@@ -19,7 +19,6 @@ import type {
   FeatureFlagRepository,
   UnauthorizedError,
 } from '@flags/domain';
-import { SecurityContext } from '../../../shared/security/context/security.context';
 
 @Injectable()
 export class CreateFeatureFlagUseCaseImpl implements CreateFeatureFlagUseCase {

@@ -1,4 +1,10 @@
-import { Controller, Get, HttpException, HttpStatus, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  Param,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AuditUsecasesFactory } from './factory/audit.usecases.factory';
 import { AuditLogEntryResponseDto } from './dto/audit.log.response.dto';

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance, Transform } from 'class-transformer';
+import type { TransformFnParams } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -39,10 +40,10 @@ export class Env {
 
   @IsArray()
   @IsString({ each: true })
-  @Transform(({ value }) =>
+  @Transform(({ value }: TransformFnParams): string[] =>
     typeof value === 'string'
       ? value.split(',').map((s: string) => s.trim())
-      : value,
+      : (value as string[]),
   )
   CORS_ORIGINS: string[];
 

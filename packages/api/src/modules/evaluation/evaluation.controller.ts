@@ -55,7 +55,12 @@ export class EvaluationController {
         throw new HttpException(errorResponse, errorResponse.statusCode);
       }
 
-      await this.cacheEvaluations(tenantId, dto.environment, dto.userId, result.value);
+      await this.cacheEvaluations(
+        tenantId,
+        dto.environment,
+        dto.userId,
+        result.value,
+      );
 
       return new FlagsBaseResponse(
         result.value.map(toEvaluatedFlagResponseDto),
@@ -92,11 +97,17 @@ export class EvaluationController {
       }
 
       computed = result.value;
-      await this.cacheEvaluations(tenantId, dto.environment, dto.userId, computed);
+      await this.cacheEvaluations(
+        tenantId,
+        dto.environment,
+        dto.userId,
+        computed,
+      );
     }
 
     const byFlagKey = new Map<string, EvaluatedFlag>(cached);
-    for (const evaluated of computed) byFlagKey.set(evaluated.flagKey, evaluated);
+    for (const evaluated of computed)
+      byFlagKey.set(evaluated.flagKey, evaluated);
 
     // rebuilt in the order the caller asked for, regardless of which came from
     // cache vs. which were just computed
@@ -130,7 +141,12 @@ export class EvaluationController {
       throw new HttpException(errorResponse, errorResponse.statusCode);
     }
 
-    await this.cacheEvaluations(tenantId, dto.environment, dto.userId, result.value);
+    await this.cacheEvaluations(
+      tenantId,
+      dto.environment,
+      dto.userId,
+      result.value,
+    );
 
     return new FlagsBaseResponse(
       result.value.map(toEvaluatedFlagResponseDto),

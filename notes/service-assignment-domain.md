@@ -3,6 +3,7 @@
 A Service (e.g. "Haircut") can be offered by multiple Users (staff), and a User can offer multiple Services.
 
 **Do NOT** embed `staffIds: string[]` in `ServiceProps` or `serviceIds: string[]` in `UserProps`. The relationship needs its own entity because:
+
 - It has its own lifecycle (created, soft-deleted)
 - It carries audit data
 - Queries are symmetric — "staff for a service" AND "services for a staff member"
@@ -115,7 +116,9 @@ export class ServiceAssignment {
 
   // ── Identity ────────────────────────────────────────────────────────────────
 
-  get id(): string { return this.props.id; }
+  get id(): string {
+    return this.props.id;
+  }
 
   equals(other: ServiceAssignment): boolean {
     return this.props.id === other.props.id;
@@ -123,19 +126,39 @@ export class ServiceAssignment {
 
   // ── Core fields ─────────────────────────────────────────────────────────────
 
-  get serviceId(): string { return this.props.serviceId; }
-  get userId(): string { return this.props.userId; }
-  get businessId(): string { return this.props.businessId; }
+  get serviceId(): string {
+    return this.props.serviceId;
+  }
+  get userId(): string {
+    return this.props.userId;
+  }
+  get businessId(): string {
+    return this.props.businessId;
+  }
 
   // ── Audit fields ────────────────────────────────────────────────────────────
 
-  get createdAt(): Date { return this.props.createdAt; }
-  get createdBy(): string { return this.props.createdBy; }
-  get updatedAt(): Date { return this.props.updatedAt; }
-  get updatedBy(): string { return this.props.updatedBy; }
-  get deletedAt(): Date | null { return this.props.deletedAt; }
-  get deletedBy(): string | null { return this.props.deletedBy; }
-  get isDeleted(): boolean { return this.props.isDeleted; }
+  get createdAt(): Date {
+    return this.props.createdAt;
+  }
+  get createdBy(): string {
+    return this.props.createdBy;
+  }
+  get updatedAt(): Date {
+    return this.props.updatedAt;
+  }
+  get updatedBy(): string {
+    return this.props.updatedBy;
+  }
+  get deletedAt(): Date | null {
+    return this.props.deletedAt;
+  }
+  get deletedBy(): string | null {
+    return this.props.deletedBy;
+  }
+  get isDeleted(): boolean {
+    return this.props.isDeleted;
+  }
 }
 ```
 
@@ -221,18 +244,35 @@ export const IServiceRepository = Symbol('IServiceRepository');
 ```ts
 import type { Result } from '../../shared/result';
 import type { InfrastructureError } from '../../shared';
-import type { ServiceAssignmentAlreadyExistsError, ServiceAssignmentNotFoundError } from '../errors';
+import type {
+  ServiceAssignmentAlreadyExistsError,
+  ServiceAssignmentNotFoundError,
+} from '../errors';
 import type { ServiceAssignment } from '../service-assignment/service.assignment.entity';
 
 export interface ServiceAssignmentRepository {
-  save(assignment: ServiceAssignment): Promise<Result<void, ServiceAssignmentAlreadyExistsError | InfrastructureError>>;
-  findById(id: string): Promise<Result<ServiceAssignment | null, ServiceAssignmentNotFoundError | InfrastructureError>>;
+  save(
+    assignment: ServiceAssignment,
+  ): Promise<Result<void, ServiceAssignmentAlreadyExistsError | InfrastructureError>>;
+  findById(
+    id: string,
+  ): Promise<
+    Result<ServiceAssignment | null, ServiceAssignmentNotFoundError | InfrastructureError>
+  >;
   findAllByService(serviceId: string): Promise<Result<ServiceAssignment[], InfrastructureError>>;
   findAllByUser(userId: string): Promise<Result<ServiceAssignment[], InfrastructureError>>;
   findAllByBusiness(businessId: string): Promise<Result<ServiceAssignment[], InfrastructureError>>;
-  findByServiceAndUser(serviceId: string, userId: string): Promise<Result<ServiceAssignment | null, InfrastructureError>>;
-  existsByServiceAndUser(serviceId: string, userId: string): Promise<Result<boolean, InfrastructureError>>;
-  update(assignment: ServiceAssignment): Promise<Result<void, ServiceAssignmentNotFoundError | InfrastructureError>>;
+  findByServiceAndUser(
+    serviceId: string,
+    userId: string,
+  ): Promise<Result<ServiceAssignment | null, InfrastructureError>>;
+  existsByServiceAndUser(
+    serviceId: string,
+    userId: string,
+  ): Promise<Result<boolean, InfrastructureError>>;
+  update(
+    assignment: ServiceAssignment,
+  ): Promise<Result<void, ServiceAssignmentNotFoundError | InfrastructureError>>;
 }
 
 export const IServiceAssignmentRepository = Symbol('IServiceAssignmentRepository');
@@ -272,16 +312,16 @@ export * from './repository/';
 export * from './shared/';
 export * from './user/';
 export * from './business/';
-export * from './service/';   // add this line
+export * from './service/'; // add this line
 ```
 
 ---
 
 ## Key Conventions
 
-| Thing | Rule |
-|-------|------|
-| Uniqueness constraint | `(serviceId, userId)` pair must be unique — enforce at DB level too |
-| Removing assignment | Call `assignment.softDelete(deletedBy)` then `repository.update(assignment)` — never hard delete |
-| Re-assignment | Delete old `ServiceAssignment`, create a new one — don't mutate in place |
+| Thing                        | Rule                                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Uniqueness constraint        | `(serviceId, userId)` pair must be unique — enforce at DB level too                                    |
+| Removing assignment          | Call `assignment.softDelete(deletedBy)` then `repository.update(assignment)` — never hard delete       |
+| Re-assignment                | Delete old `ServiceAssignment`, create a new one — don't mutate in place                               |
 | `businessId` denormalization | Carry it on the assignment (same as every other entity) to allow business-scoped queries without joins |

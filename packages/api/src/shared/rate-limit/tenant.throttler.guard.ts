@@ -1,6 +1,5 @@
-import { ExecutionContext, HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import type { ThrottlerLimitDetail } from '@nestjs/throttler';
 import { FlagsBaseErrorResponse } from '../types/base.error.response';
 import type { RequestWithTenant } from '../security/types/request-with-tenant';
 
@@ -25,14 +24,11 @@ import type { RequestWithTenant } from '../security/types/request-with-tenant';
  */
 @Injectable()
 export class TenantThrottlerGuard extends ThrottlerGuard {
-  protected async getTracker(req: RequestWithTenant): Promise<string> {
-    return req.tenantId || req.ip || 'unknown';
+  protected getTracker(req: RequestWithTenant): Promise<string> {
+    return Promise.resolve(req.tenantId || req.ip || 'unknown');
   }
 
-  protected async throwThrottlingException(
-    _context: ExecutionContext,
-    _throttlerLimitDetail: ThrottlerLimitDetail,
-  ): Promise<void> {
+  protected throwThrottlingException(): Promise<void> {
     throw new HttpException(
       new FlagsBaseErrorResponse(
         'Too many requests. Please slow down and try again shortly.',

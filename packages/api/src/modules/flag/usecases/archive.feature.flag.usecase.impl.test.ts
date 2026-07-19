@@ -29,9 +29,8 @@ import { ArchiveFeatureFlagUseCaseImpl } from './archive.feature.flag.usecase.im
  */
 class CrossTenantLeakFeatureFlagRepositoryStub extends FeatureFlagRepositoryTestImpl {
   async findByKey(_tenantId: string, key: string) {
-    return ok(
-      FEATURE_FLAG_TEST_DATA.find((flag) => flag.key === key) ?? null,
-    );
+    await Promise.resolve();
+    return ok(FEATURE_FLAG_TEST_DATA.find((flag) => flag.key === key) ?? null);
   }
 }
 

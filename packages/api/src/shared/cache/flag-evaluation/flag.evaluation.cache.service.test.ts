@@ -28,7 +28,11 @@ describe('FlagEvaluationCacheService', () => {
       flagKey: 'new-checkout',
       userId: 'user-1',
     };
-    const evaluated = { flagKey: 'new-checkout', value: true, reason: 'rollout' as const };
+    const evaluated = {
+      flagKey: 'new-checkout',
+      value: true,
+      reason: 'rollout' as const,
+    };
 
     await service.set(key, evaluated);
 
@@ -91,7 +95,11 @@ describe('FlagEvaluationCacheService', () => {
       flagKey: 'other-flag',
       userId: 'user-1',
     };
-    const evaluated = { flagKey: 'other-flag', value: true, reason: 'rollout' as const };
+    const evaluated = {
+      flagKey: 'other-flag',
+      value: true,
+      reason: 'rollout' as const,
+    };
 
     await service.set(key, evaluated);
     await service.invalidate('tenant-1', 'new-checkout');
@@ -107,7 +115,11 @@ describe('FlagEvaluationCacheService', () => {
       flagKey: 'new-checkout',
       userId: 'user-1',
     };
-    const evaluated = { flagKey: 'new-checkout', value: true, reason: 'rollout' as const };
+    const evaluated = {
+      flagKey: 'new-checkout',
+      value: true,
+      reason: 'rollout' as const,
+    };
 
     await service.set(key, evaluated);
     await service.invalidate('tenant-1', 'new-checkout');

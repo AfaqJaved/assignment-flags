@@ -143,7 +143,10 @@ export class UpdateFeatureFlagUseCaseImpl implements UpdateFeatureFlagUseCase {
 
     // the flag's config just changed — every cached evaluation for it, across
     // every user, is now stale
-    await this.evaluationCache.invalidate(saved.value.tenantId, saved.value.key);
+    await this.evaluationCache.invalidate(
+      saved.value.tenantId,
+      saved.value.key,
+    );
 
     // field-level diff — only the fields actually present on the input, compared
     // against the pre-mutation snapshot

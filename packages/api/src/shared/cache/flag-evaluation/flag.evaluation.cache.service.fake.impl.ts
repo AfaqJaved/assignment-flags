@@ -23,7 +23,10 @@ export class FlagEvaluationCacheServiceTestImpl {
     await Promise.resolve();
     this.invalidatedTenantsAndFlagKeys.push({ tenantId, flagKey });
     for (const storeKey of this.store.keys()) {
-      if (storeKey.startsWith(`${tenantId}:`) && storeKey.includes(`:${flagKey}:`)) {
+      if (
+        storeKey.startsWith(`${tenantId}:`) &&
+        storeKey.includes(`:${flagKey}:`)
+      ) {
         this.store.delete(storeKey);
       }
     }

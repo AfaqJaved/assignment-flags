@@ -11,6 +11,7 @@ The admin role has full access identical to the **business owner role** with one
 ## What's the Same as Business Owner
 
 All navigation and capabilities are available, including:
+
 - Full business settings (brand, booking preferences, notifications, general)
 - Team management (invite, manage team members)
 - Full calendar access across all team members

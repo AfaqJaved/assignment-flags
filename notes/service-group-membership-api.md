@@ -23,16 +23,16 @@ packages/api/src/modules/service-group/
 
 ## Files to Modify
 
-| File | Change |
-|------|--------|
-| `packages/api/src/shared/database/schema/index.ts` | Add `service_group_memberships: ServiceGroupMembershipTable` to `PikSlotsDatabase` |
-| `packages/api/src/modules/service-group/usecases/index.ts` | Register 3 new `Provider` entries |
-| `packages/api/src/modules/service-group/factory/service.group.usecases.factory.ts` | Add 3 injected usecase properties |
-| `packages/api/src/modules/service-group/errors/service.group.errors.map.ts` | Add `service_group_membership_already_exists` and `service_group_membership_not_found` cases |
-| `packages/api/src/modules/service-group/service.group.module.ts` | Register `ServiceGroupMembershipRepositoryImpl` with `IServiceGroupMembershipRepository` |
-| `packages/api/src/modules/service-group/service.group.controller.ts` | Add 3 new endpoint methods |
-| `packages/shared/src/api/service-group/service.group.types.ts` | Add request/response types for membership |
-| `packages/shared/src/api/service-group/service.group.endpoints.ts` | Add 3 new endpoint constants |
+| File                                                                               | Change                                                                                       |
+| ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `packages/api/src/shared/database/schema/index.ts`                                 | Add `service_group_memberships: ServiceGroupMembershipTable` to `PikSlotsDatabase`           |
+| `packages/api/src/modules/service-group/usecases/index.ts`                         | Register 3 new `Provider` entries                                                            |
+| `packages/api/src/modules/service-group/factory/service.group.usecases.factory.ts` | Add 3 injected usecase properties                                                            |
+| `packages/api/src/modules/service-group/errors/service.group.errors.map.ts`        | Add `service_group_membership_already_exists` and `service_group_membership_not_found` cases |
+| `packages/api/src/modules/service-group/service.group.module.ts`                   | Register `ServiceGroupMembershipRepositoryImpl` with `IServiceGroupMembershipRepository`     |
+| `packages/api/src/modules/service-group/service.group.controller.ts`               | Add 3 new endpoint methods                                                                   |
+| `packages/shared/src/api/service-group/service.group.types.ts`                     | Add request/response types for membership                                                    |
+| `packages/shared/src/api/service-group/service.group.endpoints.ts`                 | Add 3 new endpoint constants                                                                 |
 
 ---
 
@@ -41,9 +41,9 @@ packages/api/src/modules/service-group/
 ```ts
 export interface ServiceGroupMembershipTable extends AuditFields {
   id: string;
-  service_id: string;       // fk → services.id CASCADE
+  service_id: string; // fk → services.id CASCADE
   service_group_id: string; // fk → service_groups.id CASCADE
-  business_id: string;      // fk → businesses.id CASCADE (denormalized)
+  business_id: string; // fk → businesses.id CASCADE (denormalized)
 }
 ```
 
@@ -52,6 +52,7 @@ Types: `Selectable`, `Insertable`, `Updateable` — same pattern as `ServiceGrou
 ## 2 — Migration
 
 Table: `service_group_memberships`
+
 - Columns: same as schema above + full audit columns
 - FKs: `service_id → services.id ON DELETE CASCADE`, `service_group_id → service_groups.id ON DELETE CASCADE`, `business_id → businesses.id ON DELETE CASCADE`
 - **Partial unique index** on `(service_id, service_group_id) WHERE is_deleted = false` — prevents duplicate active memberships while allowing a service to be re-added after removal
@@ -64,6 +65,7 @@ Same pattern as `ServiceGroupPersistenceMapper`. Uses `persistenceAuditToDomain`
 ## 4 — Repository Impl
 
 `ServiceGroupMembershipRepositoryImpl implements ServiceGroupMembershipRepository`:
+
 - `save` → `insertInto('service_group_memberships')`
 - `findById` → `selectFrom` where `id = ?`
 - `findAllByServiceGroup` → `where service_group_id = ?`
@@ -78,18 +80,21 @@ All methods return `ok(...)` / `err(InfrastructureError)`.
 ## 5 — Use Case Impls
 
 ### `AssignServiceToGroupUseCaseImpl`
+
 1. `existsByServiceAndGroup(serviceId, serviceGroupId)` → if `true` return `err(ServiceGroupMembershipAlreadyExistsError)`
 2. `ServiceGroupMembership.create({ id: uuidv7(), serviceId, serviceGroupId, businessId, createdBy })`
 3. `membershipRepository.save(membership)` → propagate error
 4. Return `ok(membership)`
 
 ### `RemoveServiceFromGroupUseCaseImpl`
+
 1. `findByServiceAndGroup(serviceId, serviceGroupId)` → if `null` return `err(ServiceGroupMembershipNotFoundError)`
 2. `membership.softDelete(deletedBy)`
 3. `membershipRepository.update(softDeleted)` → propagate error
 4. Return `ok(undefined)`
 
 ### `FindServicesByGroupUseCaseImpl`
+
 1. `findAllByServiceGroup(serviceGroupId)`
 2. Filter `!m.isDeleted`
 3. Return `ok(active)`
@@ -126,17 +131,18 @@ Fields: `serviceId: string`, `businessId: string`. `serviceGroupId` comes from `
 
 ## 9 — Controller Endpoints (added to `service.group.controller.ts`)
 
-| Method | Decorator | Path constant | Roles |
-|--------|-----------|---------------|-------|
-| `POST` | `@Post(SERVICE_GROUP_ENDPOINTS.ASSIGN_SERVICE)` | `/service-groups/:serviceGroupId/members` | Platform Owner, Business Owner, Admin |
-| `DELETE` | `@Delete(SERVICE_GROUP_ENDPOINTS.REMOVE_SERVICE)` | `/service-groups/:serviceGroupId/members/:serviceId` | Platform Owner, Business Owner, Admin |
-| `GET` | `@Get(SERVICE_GROUP_ENDPOINTS.FIND_SERVICES_BY_GROUP)` | `/service-groups/:serviceGroupId/members` | (no role guard — public read) |
+| Method   | Decorator                                              | Path constant                                        | Roles                                 |
+| -------- | ------------------------------------------------------ | ---------------------------------------------------- | ------------------------------------- |
+| `POST`   | `@Post(SERVICE_GROUP_ENDPOINTS.ASSIGN_SERVICE)`        | `/service-groups/:serviceGroupId/members`            | Platform Owner, Business Owner, Admin |
+| `DELETE` | `@Delete(SERVICE_GROUP_ENDPOINTS.REMOVE_SERVICE)`      | `/service-groups/:serviceGroupId/members/:serviceId` | Platform Owner, Business Owner, Admin |
+| `GET`    | `@Get(SERVICE_GROUP_ENDPOINTS.FIND_SERVICES_BY_GROUP)` | `/service-groups/:serviceGroupId/members`            | (no role guard — public read)         |
 
 `createdBy` / `deletedBy` come from `securityContext.userId`.
 
 ## 10 — Error Map Update
 
 Add to `serviceGroupErrorMap`:
+
 ```ts
 service_group_membership_already_exists: () => 409 CONFLICT
 service_group_membership_not_found:      () => 404 NOT_FOUND

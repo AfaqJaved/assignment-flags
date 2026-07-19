@@ -14,9 +14,7 @@ import type { TenantRepository } from '@flags/domain';
 import { ApiKeyHashingService } from '../../../shared/security/hashing/api.key.hashing.service';
 
 @Injectable()
-export class AuthenticateTenantUseCaseImpl
-  implements AuthenticateTenantUseCase
-{
+export class AuthenticateTenantUseCaseImpl implements AuthenticateTenantUseCase {
   constructor(
     @Inject(ITenantRepository)
     private readonly tenantRepository: TenantRepository,

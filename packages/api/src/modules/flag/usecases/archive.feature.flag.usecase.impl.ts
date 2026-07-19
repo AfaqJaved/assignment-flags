@@ -22,9 +22,7 @@ import { SecurityContext } from '../../../shared/security/context/security.conte
 import { FlagEvaluationCacheService } from '../../../shared/cache/flag-evaluation/flag.evaluation.cache.service';
 
 @Injectable()
-export class ArchiveFeatureFlagUseCaseImpl
-  implements ArchiveFeatureFlagUseCase
-{
+export class ArchiveFeatureFlagUseCaseImpl implements ArchiveFeatureFlagUseCase {
   constructor(
     @Inject(IFeatureFlagRepository)
     private readonly flagRepository: FeatureFlagRepository,
@@ -85,7 +83,10 @@ export class ArchiveFeatureFlagUseCaseImpl
 
     // archived flags always evaluate to their default value — every cached
     // evaluation for this flag is now stale
-    await this.evaluationCache.invalidate(saved.value.tenantId, saved.value.key);
+    await this.evaluationCache.invalidate(
+      saved.value.tenantId,
+      saved.value.key,
+    );
 
     const audited = await this.auditLogRepository.append(
       AuditLogEntry.create({

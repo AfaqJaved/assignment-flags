@@ -30,6 +30,7 @@ export interface Update<Feature>UseCase {
 
 **Then export it:**
 `packages/domain/src/business/usecases/index.ts`
+
 ```ts
 export * from './update.<feature>.usecase.ts';
 ```
@@ -57,6 +58,7 @@ update<Feature>(value: {
 ```
 
 Pattern rules:
+
 - Always return `new Business({ ...this.props, ...changes })`
 - Always stamp `updatedAt: new Date()` and `updatedBy: value.updatedBy`
 - For nested objects (e.g. `brandApperanceDetails`) replace the whole object — don't spread the old one unless you intentionally want to keep unchanged fields
@@ -202,6 +204,7 @@ export class Update<Feature>Dto implements Update<Feature>Input {
 ```
 
 Available validators (from `src/shared/decorators/validations`):
+
 - `@PikSlotsStringValidation(min, max)` — required string with length bounds
 - `@PikSlotsSlugValidation()` — URL-safe slug
 - `@PikSlotsEnumValidation(values[])` — enum membership
@@ -401,6 +404,7 @@ function handleSave() {
 ```
 
 **Save button pattern:**
+
 ```svelte
 <Button
   size="sm"
@@ -418,11 +422,11 @@ function handleSave() {
 
 ## Key Conventions & Gotchas
 
-| Thing | Rule |
-|-------|------|
-| Repository method for updates | Always use `businessRepository.update()`, never `save()` (that's INSERT-only) |
-| Entity getter typo | Domain has `brandApperanceDetails` (one 'a') — shared type has `brandAppearanceDetails` (correct). Map explicitly in controller. |
-| `id` in mutation input | The `id` field is added only on the UI model type (`& { id: string }`). Strip it before sending to the API by destructuring `const { id, ...body } = input` |
-| Error map | `mapBusinessError` in `business.errors.map.ts` handles all `BusinessError` kinds. No need to add new entries unless you introduce a new error kind. |
-| Roles | Use `@Roles('Platform Owner', 'Business Owner', 'Admin')` for settings endpoints that the business owner should manage |
-| Gallery/array dirty check | Use `JSON.stringify` comparison: `JSON.stringify(localArr) !== JSON.stringify(business.section.arr)` |
+| Thing                         | Rule                                                                                                                                                        |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository method for updates | Always use `businessRepository.update()`, never `save()` (that's INSERT-only)                                                                               |
+| Entity getter typo            | Domain has `brandApperanceDetails` (one 'a') — shared type has `brandAppearanceDetails` (correct). Map explicitly in controller.                            |
+| `id` in mutation input        | The `id` field is added only on the UI model type (`& { id: string }`). Strip it before sending to the API by destructuring `const { id, ...body } = input` |
+| Error map                     | `mapBusinessError` in `business.errors.map.ts` handles all `BusinessError` kinds. No need to add new entries unless you introduce a new error kind.         |
+| Roles                         | Use `@Roles('Platform Owner', 'Business Owner', 'Admin')` for settings endpoints that the business owner should manage                                      |
+| Gallery/array dirty check     | Use `JSON.stringify` comparison: `JSON.stringify(localArr) !== JSON.stringify(business.section.arr)`                                                        |

@@ -22,11 +22,7 @@ services:
       # at /data errors out on this image ("PostgreSQL data in an unused mount")
       - flags_postgres_data:/var/lib/postgresql
     healthcheck:
-      test:
-        [
-          'CMD-SHELL',
-          'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-flags}',
-        ]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-flags}']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -41,11 +37,7 @@ services:
     volumes:
       - flags_redis_data:/data
     healthcheck:
-      test:
-        [
-          'CMD-SHELL',
-          'redis-cli -a ${REDIS_PASSWORD:-password} ping | grep -q PONG',
-        ]
+      test: ['CMD-SHELL', 'redis-cli -a ${REDIS_PASSWORD:-password} ping | grep -q PONG']
       interval: 5s
       timeout: 5s
       retries: 10

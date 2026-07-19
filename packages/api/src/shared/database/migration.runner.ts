@@ -40,7 +40,9 @@ export async function runMigrations(db: Kysely<FlagsDatabase>) {
 
   if (error) {
     logger.error('Migration Failed !!! ..... ');
-    throw error;
+    throw error instanceof Error
+      ? error
+      : new Error('Migration failed with a non-Error value', { cause: error });
   } else {
     logger.fatal('Migrations Completed Sucessfully!!! ..... ');
   }

@@ -15,12 +15,10 @@ import { redactDeep } from './redact';
 export class LoggingInterceptor implements NestInterceptor {
   private readonly logger = new Logger('HTTP');
 
-  intercept(
-    context: ExecutionContext,
-    next: CallHandler,
-  ): Observable<unknown> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const request = context.switchToHttp().getRequest<Request>();
-    const { method, originalUrl, body } = request;
+    const { method, originalUrl } = request;
+    const body: unknown = request.body;
     const startedAt = Date.now();
 
     this.logger.log(

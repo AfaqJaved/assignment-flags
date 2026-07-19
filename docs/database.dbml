@@ -1,0 +1,92 @@
+// Feature Flag Service — database schema
+// Source of truth: packages/api/src/shared/database/migrations
+//
+// Enums below mirror this app's `CHECK (col IN (...))` constraints
+// (Postgres varchar + CHECK, not native enum types) — they're modeled
+// as DBML enums purely for a cleaner diagram.
+
+Enum tenant_status {
+  active
+  suspended
+}
+
+Enum flag_type {
+  boolean
+  string
+  number
+}
+
+Enum flag_status {
+  active
+  archived
+}
+
+Enum environment {
+  development
+  staging
+  production
+}
+
+Enum audit_action {
+  flag_created
+  flag_updated
+  flag_toggled
+  flag_archived
+}
+
+Table tenants {
+  id            uuid          [pk]
+  name          varchar(100)  [not null]
+  slug          varchar(100)  [not null, unique]
+  api_key_hash  varchar(255)  [not null, unique, note: 'SHA-256 hash; plaintext key is shown once, at registration']
+  status        tenant_status [not null, default: 'active']
+  created_at    timestamptz   [not null, default: `now()`]
+  updated_at    timestamptz   [not null, default: `now()`]
+
+  Note: 'One row per registered application (tenant).'
+}
+
+Table feature_flags {
+  id             uuid         [pk]
+  tenant_id      uuid         [not null]
+  key            varchar(100) [not null, note: 'machine-readable identifier, e.g. "new-checkout"']
+  name           varchar(200) [not null]
+  description    text
+  type           flag_type    [not null]
+  default_value  jsonb        [not null, note: 'fallback value when disabled/archived; runtime type must match `type`']
+  status         flag_status  [not null, default: 'active', note: 'archiving is a soft-delete']
+  environments   jsonb        [not null, note: 'per-env {enabled, rolloutPercentage}, keyed by development|staging|production']
+  created_at     timestamptz  [not null, default: `now()`]
+  created_by     varchar(255) [not null, note: 'caller-supplied actor id — no separate users table']
+  updated_at     timestamptz  [not null, default: `now()`]
+  updated_by     varchar(255) [not null]
+
+  indexes {
+    (tenant_id, key)    [unique, name: 'idx_feature_flag_tenant_id_key']
+    (tenant_id, status) [name: 'idx_feature_flag_tenant_id_status']
+  }
+
+  Note: 'Flag keys are unique per tenant, not globally.'
+}
+
+Table audit_logs {
+  id           uuid         [pk]
+  tenant_id    uuid         [not null]
+  flag_id      uuid         [not null]
+  flag_key     varchar(100) [not null, note: 'denormalized so history reads need no join']
+  environment  environment  [note: 'null = change was not environment-scoped, e.g. defaultValue']
+  action       audit_action [not null]
+  changes      jsonb        [not null, default: `'[]'::jsonb`, note: 'AuditFieldChange[]: {field, previousValue, newValue}']
+  actor_id     varchar(255) [not null]
+  created_at   timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (tenant_id, flag_key, created_at) [name: 'idx_audit_log_tenant_id_flag_key_created_at']
+  }
+
+  Note: 'Append-only — no update/delete code path exists for this table.'
+}
+
+Ref: feature_flags.tenant_id > tenants.id [delete: cascade]
+Ref: audit_logs.tenant_id > tenants.id [delete: cascade]
+Ref: audit_logs.flag_id > feature_flags.id [delete: cascade]

@@ -73,7 +73,7 @@ NestJS Controller (api package)
   ▼
 Use Case (domain package, framework-agnostic)
   │
-  ├──► Repository port ──► Kysely adapter ──► PostgreSQL   (tenants, flags, audit_log)
+  ├──► Repository port ──► Kysely adapter ──► PostgreSQL   (tenants, flags, audit_logs)
   └──► FlagEvaluationCacheService ──► Redis (cacheable + @keyv/redis)
 ```
 
@@ -98,25 +98,13 @@ made that cheap and made the domain layer's test suite fast enough to run on eve
 
 ## Data model
 
-```
-┌────────────┐        ┌──────────────────┐        ┌───────────────┐
-│  tenants   │ 1    N │  feature_flags   │ 1    N │  audit_log    │
-├────────────┤◄───────├──────────────────┤◄───────├───────────────┤
-│ id (PK)    │        │ id (PK)          │        │ id (PK)       │
-│ name       │        │ tenant_id (FK)   │        │ tenant_id(FK) │
-│ slug (UQ)  │        │ key              │        │ flag_id (FK)  │
-│ api_key_   │        │ name             │        │ flag_key      │
-│  hash      │        │ description      │        │ environment   │
-│ status     │        │ type             │        │ action        │
-│ created_at │        │ default_value    │        │ changes(jsonb)│
-│ updated_at │        │ status           │        │ actor_id      │
-└────────────┘        │ environments     │        │ created_at    │
-                       │  (jsonb)         │        └───────────────┘
-                       │ created_at/by    │        append-only —
-                       │ updated_at/by    │        no updated_at,
-                       └──────────────────┘        no delete
-                       UNIQUE(tenant_id, key)
-```
+![Database ERD — tenants, feature_flags, audit_logs](./docs/images/database-erd.png)
+
+Generated from [`docs/database.dbml`](./docs/database.dbml) via [dbdiagram.io](https://dbdiagram.io);
+the DBML is hand-derived from the actual Kysely migrations under
+[`packages/api/src/shared/database/migrations`](./packages/api/src/shared/database/migrations),
+not the other way around, so it stays a faithful mirror of the real schema rather than an
+aspirational one.
 
 - **`tenants`** — one row per registered application. `api_key_hash` is a SHA-256 digest;
   the plaintext key is returned exactly once, at registration, and never stored.
@@ -129,11 +117,14 @@ made that cheap and made the domain layer's test suite fast enough to run on eve
   join table would have added query complexity without a real benefit at this scale.
   Archiving is a soft-delete (`status = 'archived'`), not a row deletion, so the audit
   trail and evaluation history stay intact.
-- **`audit_log`** — append-only: no `updated_at`, no update/delete code path exists for
+- **`audit_logs`** — append-only: no `updated_at`, no update/delete code path exists for
   it anywhere in the domain or repository layer. `flag_key` is denormalized onto the row
   (in addition to `flag_id`) so history reads never need a join back to `feature_flags`.
   `environment` is nullable because not every change is environment-scoped (e.g. editing
-  a flag's `defaultValue` applies across all three environments at once).
+  a flag's `defaultValue` applies across all three environments at once). `status`,
+  `type`, `environment`, and `action` are Postgres `varchar` columns with a `CHECK`
+  constraint, not native enum types — the ERD models them as enums purely for a clearer
+  diagram (see the note at the top of the DBML source).
 
 Migrations are plain Kysely migration files under
 [`packages/api/src/shared/database/migrations`](./packages/api/src/shared/database/migrations)
@@ -625,6 +616,17 @@ project's default VPC with private connectivity, least-privilege IAM (Workload I
 Federation for GitHub Actions — no downloaded service-account keys), Secret Manager, and
 Cloud Monitoring. Full module-by-module reasoning lives in **[`iac/README.md`](./iac/README.md)**;
 this section covers the deployment strategy specifically.
+
+![CI/CD pipeline and GCP infrastructure](./docs/images/ci-cd-gcp-architecture.png)
+
+A commit to `main` runs the CI pipeline (format → lint → unit tests → e2e tests → build
+& push the Docker image to Artifact Registry — see [CI/CD pipeline](#cicd-pipeline)),
+which Cloud Run then deploys as a new revision, blue/green via traffic splitting between
+revisions. From inside the VPC, Cloud Run reaches Cloud SQL and Memorystore Redis over
+private IP only, and exports its logs and metrics to Cloud Logging/Monitoring
+throughout. The one leg of this diagram not yet automated is Artifact Registry → Cloud
+Run — CI publishes the image today, but the `gcloud run deploy`/`update-traffic` calls
+that pick it up are still a manual step (see [Known gaps](#known-gaps--future-improvements)).
 
 ```
 iac/

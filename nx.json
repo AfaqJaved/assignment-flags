@@ -17,6 +17,10 @@
     "format": {
       "cache": true
     },
+
+    "format-check": {
+      "cache": true
+    },
     "test": {
       "dependsOn": ["^build"],
       "cache": false

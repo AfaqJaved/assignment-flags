@@ -34,7 +34,7 @@ jobs:
       # the repo's own "format" scripts run `prettier --write`, which fixes
       # in place rather than failing — CI needs the read-only check instead
       - name: Check formatting
-        run: bunx prettier --check .
+        run: bun run format-check
 
   lint:
     name: Lint

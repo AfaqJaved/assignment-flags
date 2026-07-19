@@ -7,6 +7,7 @@
     "dev": "bunx nx run-many -t dev --no-tui",
     "watch": "bunx nx run-many -t watch --no-tui",
     "format": "bunx nx run-many -t format",
+    "format-check": "bunx nx run-many -t format-check",
     "lint": "bunx nx run-many -t lint",
     "prepare": "husky",
     "docker:run": "docker compose --env-file .env -f docker/postgres.yml -f docker/redis.yml -f docker/mailpit.yml up -d",

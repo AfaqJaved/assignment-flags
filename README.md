@@ -651,6 +651,16 @@ Federation for GitHub Actions — no downloaded service-account keys), Secret Ma
 Cloud Monitoring. Full module-by-module reasoning lives in **[`iac/README.md`](./iac/README.md)**;
 this section covers the deployment strategy specifically.
 
+**Note on how this was actually deployed:** the Terraform in `iac/` is real, complete,
+and `terraform validate`/`plan`-clean, but the live service behind the deployed URL above
+was provisioned by hand through the GCP Console/`gcloud`, not via `terraform apply`. I
+wanted to keep the actual deploy path simple for this submission and use it as a chance
+to get hands-on with the underlying GCP services (Cloud Run, Cloud SQL, Memorystore,
+Secret Manager) directly, rather than only ever seeing them through a Terraform
+abstraction. The Terraform still fully describes what that infrastructure should look
+like — same Cloud Run config, same private-IP Cloud SQL/Memorystore setup, same IAM — it
+just isn't the thing that's currently applied against the live project.
+
 ![CI/CD pipeline and GCP infrastructure](./docs/images/ci-cd-gcp-architecture.png)
 
 A commit to `main` runs the CI pipeline (format → lint → unit tests → e2e tests → build
@@ -719,10 +729,10 @@ deployment.
 
 **Current state of this pipeline:** the CI workflow (below) builds and pushes the image
 to Artifact Registry on every push to `main`, but does **not** yet run the
-`gcloud run deploy` / `update-traffic` steps above automatically — those are documented
-and were exercised manually against Terraform's `terraform validate`/`plan` (no live GCP
-project exists for this submission), but wiring them into a GitHub Actions deploy job
-(with the canary-then-promote sequence and an automated rollback on a failed health
+`gcloud run deploy` / `update-traffic` steps above automatically — the live Cloud Run
+service was deployed by hand (see the note above), and the canary/rollback sequence has
+only been exercised manually against it so far. Wiring it into a GitHub Actions deploy
+job (with the canary-then-promote sequence and an automated rollback on a failed health
 check) is the immediate next step; see [Known gaps](#known-gaps--future-improvements).
 
 ### Why the default VPC, not a custom one

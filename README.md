@@ -9,10 +9,11 @@ This repository is a take-home submission for the assignment described in
 [`assignment-doc/assignment.markdown`](./assignment-doc/assignment.markdown) (Option C:
 Multi-Tenant Config & Feature Flag Service).
 
-**Deployed URL:** _not yet deployed._ The application, Docker image, and Terraform are
-complete and validated locally (see [Infrastructure & Deployment](#infrastructure--deployment)),
-but no GCP project has been provisioned against this codebase yet. Once deployed, the
-Cloud Run URL from `terraform output service_url` belongs here.
+**Deployed URL:** [`https://flags-api-92921455943.us-central1.run.app/`](https://flags-api-92921455943.us-central1.run.app/)
+Visit
+[`/docs`](https://flags-api-92921455943.us-central1.run.app/docs) for the interactive
+Swagger UI (full API reference, request/response schemas, and a "Try it out" console);
+the health check is at `/api/v1/health`.
 
 ---
 
@@ -54,9 +55,9 @@ packages/
 ```
 
 Each domain concept (`tenant`, `flag`, `evaluation`, `audit`) is a vertical slice
-present in *both* packages: `packages/domain/src/flag` holds the `FeatureFlag` entity,
-its use cases, and its repository *port* (interface); `packages/api/src/modules/flag`
-holds the NestJS controller, DTOs, and the Kysely repository *adapter* that implements
+present in _both_ packages: `packages/domain/src/flag` holds the `FeatureFlag` entity,
+its use cases, and its repository _port_ (interface); `packages/api/src/modules/flag`
+holds the NestJS controller, DTOs, and the Kysely repository _adapter_ that implements
 that port. Use cases return a `Result<T, E>` (no thrown exceptions for expected
 business errors — see `packages/domain/src/shared/result.ts`); the API layer maps each
 `Result` error `kind` to an HTTP status in a per-module `errors.map.ts`.
@@ -78,23 +79,23 @@ Use Case (domain package, framework-agnostic)
 ```
 
 Why this split, given the assignment's time budget: the deterministic rollout algorithm
-and the multi-tenant invariants (flag keys unique *per tenant*, environment-scoped
+and the multi-tenant invariants (flag keys unique _per tenant_, environment-scoped
 config, append-only audit) are the parts most worth unit-testing in isolation, without
 spinning up Nest's DI container or a database. Keeping them in a framework-free package
 made that cheap and made the domain layer's test suite fast enough to run on every save.
 
 ## Tech stack & reasoning
 
-| Concern            | Choice                                    | Why                                                                                                                                                                                                    |
-| ------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Language/runtime    | TypeScript on **Bun**                     | Assignment's preferred stack. Bun's workspace linking + single lockfile made the two-package monorepo (`domain` + `api`) simple; also used as the container runtime (`oven/bun` images).             |
-| Framework           | **NestJS**                                 | Assignment's recommendation for this scope — DI, guards, and middleware map cleanly onto per-tenant auth and rate limiting; module boundaries mirror the domain's vertical slices.                   |
-| Database            | **PostgreSQL** via **Kysely**              | Relational integrity for tenant → flag → audit-log foreign keys; `jsonb` columns for `default_value` and per-environment `environments` config avoid a wide, sparse column set. Kysely over an ORM for typed SQL without hidden N+1s in a schema this small. |
-| Cache                | **Redis** via `cacheable` + `@keyv/redis`  | Evaluation results are cheap to compute (a hash + a few comparisons) but still worth caching under load; `cacheable`'s built-in tag support gives per-flag cache invalidation without tracking individual per-user keys by hand. |
-| Monorepo tooling    | **Nx**                                     | Caches `build`/`lint`/`test` across the two packages and orders `domain` before `api` in CI (api imports domain's build output).                                                                     |
-| IaC                  | **Terraform**                              | Assignment's preferred IaC tool; one root module, two Terraform *workspaces* (`staging`/`production`) rather than duplicated per-env directories — see [iac/README.md](./iac/README.md).             |
-| Compute              | **Cloud Run**                              | Built-in revision-based traffic splitting (canary/blue-green) with zero cluster/node-pool management — the right fit for a single stateless HTTP service at this scale. See [reasoning in iac/README.md](./iac/README.md#why-cloud-run-not-gke). |
-| Managed DB/cache     | **Cloud SQL (Postgres)**, **Memorystore (Redis)** | Managed backups, private-IP-only connectivity via a VPC connector, and Secret-Manager-issued credentials, without operating either service by hand.                                                  |
+| Concern          | Choice                                            | Why                                                                                                                                                                                                                                                          |
+| ---------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Language/runtime | TypeScript on **Bun**                             | Assignment's preferred stack. Bun's workspace linking + single lockfile made the two-package monorepo (`domain` + `api`) simple; also used as the container runtime (`oven/bun` images).                                                                     |
+| Framework        | **NestJS**                                        | Assignment's recommendation for this scope — DI, guards, and middleware map cleanly onto per-tenant auth and rate limiting; module boundaries mirror the domain's vertical slices.                                                                           |
+| Database         | **PostgreSQL** via **Kysely**                     | Relational integrity for tenant → flag → audit-log foreign keys; `jsonb` columns for `default_value` and per-environment `environments` config avoid a wide, sparse column set. Kysely over an ORM for typed SQL without hidden N+1s in a schema this small. |
+| Cache            | **Redis** via `cacheable` + `@keyv/redis`         | Evaluation results are cheap to compute (a hash + a few comparisons) but still worth caching under load; `cacheable`'s built-in tag support gives per-flag cache invalidation without tracking individual per-user keys by hand.                             |
+| Monorepo tooling | **Nx**                                            | Caches `build`/`lint`/`test` across the two packages and orders `domain` before `api` in CI (api imports domain's build output).                                                                                                                             |
+| IaC              | **Terraform**                                     | Assignment's preferred IaC tool; one root module, two Terraform _workspaces_ (`staging`/`production`) rather than duplicated per-env directories — see [iac/README.md](./iac/README.md).                                                                     |
+| Compute          | **Cloud Run**                                     | Built-in revision-based traffic splitting (canary/blue-green) with zero cluster/node-pool management — the right fit for a single stateless HTTP service at this scale. See [reasoning in iac/README.md](./iac/README.md#why-cloud-run-not-gke).             |
+| Managed DB/cache | **Cloud SQL (Postgres)**, **Memorystore (Redis)** | Managed backups, private-IP-only connectivity via a VPC connector, and Secret-Manager-issued credentials, without operating either service by hand.                                                                                                          |
 
 ## Data model
 
@@ -301,9 +302,7 @@ X-API-Key: sk_...
 ```json
 // 200 response
 {
-  "data": [
-    { "flagKey": "new-checkout", "value": true, "reason": "rollout", "cacheHit": false }
-  ],
+  "data": [{ "flagKey": "new-checkout", "value": true, "reason": "rollout", "cacheHit": false }],
   "statusCode": 200,
   "timestamp": "2026-07-19T10:06:00.000Z"
 }
@@ -370,7 +369,7 @@ is no separate "log this manually" call for API consumers to forget.
 GET /api/v1/health
 ```
 
-No auth, no rate limiting, no dependency checks (deliberately a *liveness* probe, not
+No auth, no rate limiting, no dependency checks (deliberately a _liveness_ probe, not
 readiness — see the comment in `health.controller.ts`). Backs the Cloud Run
 startup/liveness probes and the Terraform uptime check.
 
@@ -406,19 +405,17 @@ function fnv1a(input: string): number {
 bucketFor(flagKey, userId) = (fnv1a(`${flagKey}:${userId}`) % 10_000) / 100; // → [0, 100)
 
 isInRollout(flagKey, userId, pct) =
-  pct <= 0   ? false :
-  pct >= 100 ? true  :
-  bucketFor(flagKey, userId) < pct;
+  pct <= 0 ? false : pct >= 100 ? true : bucketFor(flagKey, userId) < pct;
 ```
 
 FNV-1a was chosen over something like SHA-256 for this because the bucket only needs to
-be *uniformly distributed and stable*, not cryptographically unpredictable — it's not
+be _uniformly distributed and stable_, not cryptographically unpredictable — it's not
 guarding a secret, just spreading users evenly across a 0–100 range. It's dependency-free,
 fast enough to run on every evaluation with no caching required, and stable across
 platforms/Node versions (`>>> 0` keeps everything in unsigned 32-bit space).
 
 **Why hash `flagKey + userId` together, not `userId` alone:** hashing the pair means the
-*same user* lands in a *different, independent* bucket for each flag. Without the flag
+_same user_ lands in a _different, independent_ bucket for each flag. Without the flag
 key mixed in, a user who happens to bucket into the bottom 10% for one flag would
 bucket into the bottom 10% for every flag — rollouts across different flags would be
 correlated instead of independent.
@@ -447,7 +444,7 @@ Evaluation results are cached in Redis via `FlagEvaluationCacheService`
 (`packages/api/src/shared/cache/flag-evaluation`), on top of the `cacheable` library
 (with `@keyv/redis` as its backing store).
 
-- **Cache key** is `flag-eval:{tenantId}:{environment}:{flagKey}:{userId}` — *not* just
+- **Cache key** is `flag-eval:{tenantId}:{environment}:{flagKey}:{userId}` — _not_ just
   the flag key. The resolved value for a partially-rolled-out flag is a function of all
   four of those, since the deterministic bucket depends on `(flagKey, userId)`; keying
   by flag alone would pin whichever user's request happened to populate the cache first
@@ -470,9 +467,9 @@ Evaluation results are cached in Redis via `FlagEvaluationCacheService`
 
 - **API keys, not passwords.** Each tenant gets one high-entropy key (`sk_...`),
   returned once at registration. The server stores only a SHA-256 hash of it
-  (`ApiKeyHashingService`) — deliberately *not* bcrypt: bcrypt's per-call random salt
+  (`ApiKeyHashingService`) — deliberately _not_ bcrypt: bcrypt's per-call random salt
   would produce a different digest every time, which is unusable as a `WHERE
-  api_key_hash = ?` lookup key. That trade-off is safe here specifically because API
+api_key_hash = ?` lookup key. That trade-off is safe here specifically because API
   keys are random high-entropy tokens, not human-guessable passwords — the threat model
   a slow, salted hash defends against (offline brute-forcing of a weak password) doesn't
   apply.
@@ -569,11 +566,11 @@ cd packages/api && bun run test:e2e   # end-to-end tests against a real DB/Redis
 
 ## Testing strategy
 
-| Layer                       | Tool             | What's covered                                                                                         |
-| ---------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------- |
-| Domain unit tests            | Vitest             | `DeterministicRolloutService` (bucket distribution, edge cases at 0%/100%, stability across calls), `FeatureFlag` entity invariants. |
-| API unit tests               | Jest               | Every use case (`create/update/archive/list` flag, `evaluate`/`bulk-evaluate`, `authenticate/register` tenant, `get flag history`), the evaluation cache service, the logging interceptor's redaction. Repositories are exercised against in-memory fake implementations (`*.repository.fake.impl.ts`), not mocks, so use-case tests cover real control flow (not-found, already-exists, archived) without a database. |
-| E2E tests                    | Jest + Supertest   | `tenant`, `flag`, `evaluation`, `audit`, `health` — full HTTP round trips through the real Nest app, including tenant registration → API key issuance → authenticated flag CRUD → evaluation, and validation-error responses (400/404/409). |
+| Layer             | Tool             | What's covered                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ----------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Domain unit tests | Vitest           | `DeterministicRolloutService` (bucket distribution, edge cases at 0%/100%, stability across calls), `FeatureFlag` entity invariants.                                                                                                                                                                                                                                                                                   |
+| API unit tests    | Jest             | Every use case (`create/update/archive/list` flag, `evaluate`/`bulk-evaluate`, `authenticate/register` tenant, `get flag history`), the evaluation cache service, the logging interceptor's redaction. Repositories are exercised against in-memory fake implementations (`*.repository.fake.impl.ts`), not mocks, so use-case tests cover real control flow (not-found, already-exists, archived) without a database. |
+| E2E tests         | Jest + Supertest | `tenant`, `flag`, `evaluation`, `audit`, `health` — full HTTP round trips through the real Nest app, including tenant registration → API key issuance → authenticated flag CRUD → evaluation, and validation-error responses (400/404/409).                                                                                                                                                                            |
 
 **What I prioritized and why:** the deterministic rollout algorithm is the one piece of
 this system where a subtle bug (non-uniform distribution, non-monotonic growth, or
@@ -601,10 +598,10 @@ Kysely queries, and HTTP layer agree with what the use cases assume.
 - **`FlagsDatabaseModule`/`FlagsCacheModule` needed explicit `onModuleDestroy` hooks.**
   Running the e2e suite against a real Postgres/Redis surfaced that neither the Kysely
   `Pool` nor the Redis client was ever closed — each e2e file's `afterAll(() =>
-  app.close())` left the process with open sockets, so Jest reported all tests passing
+app.close())` left the process with open sockets, so Jest reported all tests passing
   but then hung instead of exiting. Harmless for the long-running server (which never
   calls `.close()` on itself), but fatal for wiring e2e into CI, since a hung job either
-  times out or has to be forced with `--forceExit`, masking any *real* future leak.
+  times out or has to be forced with `--forceExit`, masking any _real_ future leak.
   Fixed by having both modules implement `OnModuleDestroy` and call `db.destroy()` /
   `cache.disconnect()` — Nest runs those hooks automatically on `app.close()`, no
   `enableShutdownHooks()` needed for that (only OS-signal handling needs that).
@@ -654,7 +651,7 @@ duplicated directories that could drift apart.
 
 Cloud Run was chosen specifically because revision-based traffic splitting is built in —
 no load balancer or extra resources to provision for canary/blue-green. Terraform
-creates the *service* (env vars, secrets, scaling, VPC access) once, then deliberately
+creates the _service_ (env vars, secrets, scaling, VPC access) once, then deliberately
 steps back: `lifecycle.ignore_changes` on the container image, the `traffic` block, and
 the `client`/`client_version` annotations means Terraform never fights CI/CD for control
 of "which revision is live" (see the `cloud-run` module's comments in
@@ -743,7 +740,7 @@ deploy the built image anywhere — that's the next most valuable addition.
   `--ignore-scripts` so the root `prepare` husky hook — meaningless with no `.git` in the
   image — never runs).
 - **build** builds `domain` before `api`, since `api`'s build imports `domain`'s output.
-- **runtime** is `oven/bun:1-slim`, does a *fresh* `bun install --production` (rather
+- **runtime** is `oven/bun:1-slim`, does a _fresh_ `bun install --production` (rather
   than copying `node_modules` from the build stage) so devDependencies (`@nestjs/cli`,
   `jest`, `tsup`, `nx`, `eslint`, ...) never end up in the final image, and copies over
   only the two packages' `dist/` output. Final `CMD` runs the compiled `dist/main.js`
@@ -760,7 +757,7 @@ built-in `fetch()`, since the slim runtime image has neither `curl` nor `wget`.
 - Every request/response is logged (`LoggingInterceptor`) with method, URL, status
   code, duration, and a redacted body — sensitive/long string values (API keys,
   hashes) are masked before anything reaches the log stream (`redactDeep`).
-- Cloud Run's *built-in* metrics (`run.googleapis.com/request_count`,
+- Cloud Run's _built-in_ metrics (`run.googleapis.com/request_count`,
   `request_latencies`, `container/instance_count`) require no app-level instrumentation
   and already back three Terraform-managed alert policies — health-check failures, 5xx
   error rate over a 5-minute rolling window (via a Monitoring Query Language ratio
@@ -781,7 +778,7 @@ built-in `fetch()`, since the slim runtime image has neither `curl` nor `wget`.
   line (Cloud Logging auto-parses JSON stdout on Cloud Run, so this wouldn't need a
   separate log-shipping agent).
 - **App-level custom metrics** — evaluation latency percentiles, evaluations/sec broken
-  down *by tenant*, error rate broken down by tenant and endpoint, and cache hit/miss
+  down _by tenant_, error rate broken down by tenant and endpoint, and cache hit/miss
   ratio. The Cloud Monitoring dashboard already has widgets provisioned for these under a
   `custom.googleapis.com/flags/*` namespace (see `iac/modules/monitoring/dashboard.tf`)
   and will show "no data" until the app actually exports them — most naturally via
@@ -808,7 +805,7 @@ here, and why:
   `enabled`/`rolloutPercentage` are meaningfully different per environment (you toggle
   `production` and `staging` independently); folding all three into one request body
   either meant sending all three every time or inventing partial-update semantics for a
-  nested structure. `defaultValue` *is* still a single cross-environment field on that
+  nested structure. `defaultValue` _is_ still a single cross-environment field on that
   same endpoint, since it's stored once per flag, not once per environment.
 - **Percentage rollout is a single on/off gate today, not full multi-variant selection.**
   The assignment asks for `string` (variant selection) flag types; this implementation

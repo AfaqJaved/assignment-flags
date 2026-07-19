@@ -14,10 +14,8 @@ export class PrintLoadedEnv {
     'NODE_ENV',
     'PORT',
     'DATABASE_URL',
-    'CORS_ORIGINS',
     'REDIS_HOST',
     'REDIS_PORT',
-    'BACKEND_PUBLIC_URL',
     'ENABLE_API_DOCS',
   ];
 

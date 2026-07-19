@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { plainToInstance, Transform } from 'class-transformer';
-import type { TransformFnParams } from 'class-transformer';
 import {
-  IsArray,
   IsBoolean,
   IsEnum,
   IsNumber,
@@ -30,22 +28,10 @@ export class Env {
   @IsString()
   DATABASE_URL: string;
 
-  @IsString()
-  BACKEND_PUBLIC_URL: string;
-
   @IsOptional()
   @IsBoolean()
   @Transform(({ value }) => value === 'true' || value === true)
   ENABLE_API_DOCS: boolean = false;
-
-  @IsArray()
-  @IsString({ each: true })
-  @Transform(({ value }: TransformFnParams): string[] =>
-    typeof value === 'string'
-      ? value.split(',').map((s: string) => s.trim())
-      : (value as string[]),
-  )
-  CORS_ORIGINS: string[];
 
   @IsString()
   REDIS_HOST: string;

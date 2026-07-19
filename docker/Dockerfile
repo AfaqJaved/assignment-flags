@@ -11,12 +11,18 @@
 # ---- deps -------------------------------------------------------------------
 # Installs every workspace's dependencies, including devDependencies (tsup for
 # domain, @nestjs/cli for api) needed to produce both dist/ folders below.
+#
+# packages/load-testing/package.json is copied here too even though its dist/
+# output is never shipped (see the runtime stage below) — bun.lock records it
+# as a workspace member, and `--frozen-lockfile` fails if a workspace in the
+# lockfile has no package.json on disk to reconcile against.
 FROM oven/bun:1 AS deps
 WORKDIR /repo
 
 COPY package.json bun.lock ./
 COPY packages/domain/package.json packages/domain/package.json
 COPY packages/api/package.json packages/api/package.json
+COPY packages/load-testing/package.json packages/load-testing/package.json
 
 # --ignore-scripts: the root "prepare" script sets up husky git hooks, which
 # has no meaning in a container (no .git, no interactive dev workflow)
@@ -45,6 +51,9 @@ ENV NODE_ENV=production
 COPY package.json bun.lock ./
 COPY packages/domain/package.json packages/domain/package.json
 COPY packages/api/package.json packages/api/package.json
+# same reconciliation requirement as the deps stage above — load-testing's
+# dist/ is still never copied in below, so it never ends up in this image
+COPY packages/load-testing/package.json packages/load-testing/package.json
 
 RUN bun install --frozen-lockfile --production --ignore-scripts
 

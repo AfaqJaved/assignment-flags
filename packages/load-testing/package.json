@@ -1,0 +1,21 @@
+{
+  "name": "@flags/load-testing",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsup",
+    "format": "prettier . --write",
+    "format-check": "prettier . --check",
+    "load-test": "bun run build && k6 run dist/evaluate.load.test.js",
+    "load-test:report:open": "open report.html"
+  },
+  "devDependencies": {
+    "@types/k6": "^2.0.1",
+    "prettier": "^3.8.3",
+    "tsup": "^8.5.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

@@ -9,6 +9,7 @@
     "format": "bunx nx run-many -t format",
     "format-check": "bunx nx run-many -t format-check",
     "lint": "bunx nx run-many -t lint",
+    "test": "bunx nx run-many -t test",
     "prepare": "husky",
     "docker:run": "docker compose --env-file .env -f docker/postgres.yml -f docker/redis.yml -f docker/mailpit.yml up -d",
     "docker:down": "docker compose --env-file .env -f docker/postgres.yml -f docker/redis.yml -f docker/mailpit.yml down ",

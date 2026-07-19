@@ -23,4 +23,10 @@ export class EvaluatedFlagResponseDto {
     description: 'Why the flag resolved to this value.',
   })
   reason: EvaluationReason;
+
+  @ApiProperty({
+    example: true,
+    description: 'Whether this result was served from cache.',
+  })
+  cacheHit: boolean;
 }

@@ -63,7 +63,9 @@ export class EvaluationController {
       );
 
       return new FlagsBaseResponse(
-        result.value.map(toEvaluatedFlagResponseDto),
+        result.value.map((evaluated) =>
+          toEvaluatedFlagResponseDto(evaluated, false),
+        ),
         HttpStatus.OK,
       );
     }
@@ -111,12 +113,11 @@ export class EvaluationController {
 
     // rebuilt in the order the caller asked for, regardless of which came from
     // cache vs. which were just computed
-    const merged = dto.flagKeys.map((flagKey) => byFlagKey.get(flagKey)!);
-
-    return new FlagsBaseResponse(
-      merged.map(toEvaluatedFlagResponseDto),
-      HttpStatus.OK,
+    const merged = dto.flagKeys.map((flagKey) =>
+      toEvaluatedFlagResponseDto(byFlagKey.get(flagKey)!, cached.has(flagKey)),
     );
+
+    return new FlagsBaseResponse(merged, HttpStatus.OK);
   }
 
   @Post('bulk')
@@ -149,7 +150,9 @@ export class EvaluationController {
     );
 
     return new FlagsBaseResponse(
-      result.value.map(toEvaluatedFlagResponseDto),
+      result.value.map((evaluated) =>
+        toEvaluatedFlagResponseDto(evaluated, false),
+      ),
       HttpStatus.OK,
     );
   }

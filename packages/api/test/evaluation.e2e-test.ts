@@ -63,7 +63,7 @@ describe('Flag evaluation (e2e)', () => {
       })
       .expect(200);
 
-    expect(response.body.data).toEqual([
+    expect(response.body.data).toMatchObject([
       { flagKey: key, value: false, reason: 'flag_disabled' },
     ]);
   });
@@ -99,7 +99,7 @@ describe('Flag evaluation (e2e)', () => {
       })
       .expect(200);
 
-    expect(response.body.data).toEqual([
+    expect(response.body.data).toMatchObject([
       { flagKey: key, value: true, reason: 'rollout' },
     ]);
   });
@@ -140,8 +140,17 @@ describe('Flag evaluation (e2e)', () => {
     const second = await evaluateOnce();
     const third = await evaluateOnce();
 
-    expect(first.body.data).toEqual(second.body.data);
-    expect(second.body.data).toEqual(third.body.data);
+    // cacheHit legitimately differs between calls (first is a miss, later
+    // ones are hits), so it's excluded from the determinism comparison
+    const withoutCacheHit = (data: any[]) =>
+      data.map(({ flagKey, value, reason }) => ({ flagKey, value, reason }));
+
+    expect(withoutCacheHit(first.body.data)).toEqual(
+      withoutCacheHit(second.body.data),
+    );
+    expect(withoutCacheHit(second.body.data)).toEqual(
+      withoutCacheHit(third.body.data),
+    );
   });
 
   it('bulk-evaluates every active flag for a user in one request', async () => {

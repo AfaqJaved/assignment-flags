@@ -607,11 +607,16 @@ Kysely queries, and HTTP layer agree with what the use cases assume.
   reporting p50/p95/p99 latency and cache hit ratio, and wire it into CI as a
   non-blocking informational step (or a manual workflow_dispatch job, since load tests
   aren't something you want running on every push).
-- **E2E tests in CI.** The `test` job in CI runs the unit suites only (`bun run test` →
-  vitest for `domain`, jest for `api`'s `src/**/*.test.ts`), since those run against
-  in-memory fakes and need no services. The e2e suite under `packages/api/test`
-  (`bun run test:e2e`) needs a real Postgres/Redis and isn't wired into CI yet — the
-  natural next step is Postgres/Redis service containers in the same job.
+- **`FlagsDatabaseModule`/`FlagsCacheModule` needed explicit `onModuleDestroy` hooks.**
+  Running the e2e suite against a real Postgres/Redis surfaced that neither the Kysely
+  `Pool` nor the Redis client was ever closed — each e2e file's `afterAll(() =>
+  app.close())` left the process with open sockets, so Jest reported all tests passing
+  but then hung instead of exiting. Harmless for the long-running server (which never
+  calls `.close()` on itself), but fatal for wiring e2e into CI, since a hung job either
+  times out or has to be forced with `--forceExit`, masking any *real* future leak.
+  Fixed by having both modules implement `OnModuleDestroy` and call `db.destroy()` /
+  `cache.disconnect()` — Nest runs those hooks automatically on `app.close()`, no
+  `enableShutdownHooks()` needed for that (only OS-signal handling needs that).
 
 ## Infrastructure & deployment
 
@@ -699,8 +704,8 @@ purpose-built VPC with no other current use. Full reasoning in
 
 ```
 format ──┐
-lint ────┼──► build ──► test ──► docker-publish (build + push image to Artifact Registry)
-         ┘
+lint ────┼──► build ──┬──► test ─────┬──► docker-publish (build + push image to Artifact Registry)
+         ┘            └──► test-e2e ─┘
 ```
 
 - **format** — `prettier --check` (the repo's own `format` scripts run `--write`; CI
@@ -710,12 +715,20 @@ lint ────┼──► build ──► test ──► docker-publish (bui
   automatically, since `api` imports `domain`'s build output.
 - **test** — `nx run-many -t test`: vitest for `domain`, jest for `api`'s unit suite
   (`src/**/*.test.ts`). Both run against in-memory fakes, so the job needs no database or
-  Redis service container. The `packages/api/test` e2e suite (`bun run test:e2e`) is
-  *not* run here yet — see [Known gaps](#known-gaps--future-improvements).
-- **docker-publish** — runs only once `format`, `lint`, `build`, and `test` all pass;
-  builds the multi-stage image (below) via `docker/build-push-action` and pushes
-  `:latest` and `:<git-sha>` to Artifact Registry, authenticating with a JSON key from
-  `secrets.GCP_SA_KEY`.
+  Redis service container.
+- **test-e2e** — `packages/api/test/*.e2e-test.ts` (`bun run test:e2e`) against real
+  service containers: Postgres runs as a `services:` container (its image takes auth via
+  env vars, so GitHub Actions can health-check it before any step runs); Redis is
+  started as a plain `docker run ... redis-server --requirepass password` step instead,
+  since the stock Redis image needs its password on the command line and `services:` has
+  no hook for that — both match `docker/docker-compose.yml`'s image versions and
+  passwords exactly. `domain` is built first (same reason as the `build`/`test` jobs);
+  the app's own automatic-migrations-on-boot handles schema setup, so there's no separate
+  migration step here either.
+- **docker-publish** — runs only once `format`, `lint`, `build`, `test`, and `test-e2e`
+  all pass; builds the multi-stage image (below) via `docker/build-push-action` and
+  pushes `:latest` and `:<git-sha>` to Artifact Registry, authenticating with a JSON key
+  from `secrets.GCP_SA_KEY`.
 
 As noted in [Known gaps](#known-gaps--future-improvements), this pipeline still doesn't
 deploy the built image anywhere — that's the next most valuable addition.
@@ -835,10 +848,7 @@ here, and why:
 
 Roughly in the order I'd tackle them:
 
-1. **Run the e2e suite in CI too**, against Postgres/Redis service containers in the
-   GitHub Actions runner — the `test` job covers unit tests today (vitest + jest against
-   in-memory fakes); the e2e suite under `packages/api/test` still only runs locally.
-2. **Automate the deploy step** — a GitHub Actions job (gated on a manual approval for
+1. **Automate the deploy step** — a GitHub Actions job (gated on a manual approval for
    the `production` GitHub environment, per the WIF setup already in
    `iac/modules/iam`) that runs the canary sequence from
    [Deployment strategy](#deployment-strategy-cloud-run-traffic-splitting-canary):
@@ -846,24 +856,24 @@ Roughly in the order I'd tackle them:
    alert policies for a window, then promote — with automatic rollback
    (`update-traffic --to-revisions=<previous>=100`) if the error-rate/latency alerts
    fire during the canary window.
-3. **Structured JSON logging with a request/correlation ID** propagated through every
+2. **Structured JSON logging with a request/correlation ID** propagated through every
    log line for a request — see [Observability](#observability).
-4. **App-level custom metrics** (evaluation latency, evaluations/sec by tenant, cache
+3. **App-level custom metrics** (evaluation latency, evaluations/sec by tenant, cache
    hit ratio, error rate by tenant+endpoint) exported to Cloud Monitoring — the
    dashboard widgets are already provisioned and waiting for this data.
-5. **A load test script** (k6 against `/evaluate`) with documented throughput/latency
+4. **A load test script** (k6 against `/evaluate`) with documented throughput/latency
    results, wired into CI as a non-blocking/manual job.
-6. **Multi-variant flag evaluation** for `string`/`number` types — weighted bucketing
+5. **Multi-variant flag evaluation** for `string`/`number` types — weighted bucketing
    over the same deterministic `[0, 100)` bucket space, rather than today's boolean
    on/off gate.
-7. **Attribute-based targeting rules** evaluated against the `context` object that
+6. **Attribute-based targeting rules** evaluated against the `context` object that
    `/evaluate` already accepts and threads through unused.
-8. **Real-time distribution** (SSE/WebSocket) — the assignment's explicit bonus item.
-9. **Redis-backed rate-limit storage**, once the service runs as more than one Cloud Run
+7. **Real-time distribution** (SSE/WebSocket) — the assignment's explicit bonus item.
+8. **Redis-backed rate-limit storage**, once the service runs as more than one Cloud Run
    instance.
-10. **Explicit tenant-isolation and cross-tenant-access e2e tests**, asserting directly
-    (not just implicitly) that one tenant's API key can never read or mutate another
-    tenant's flags/audit history.
+9. **Explicit tenant-isolation and cross-tenant-access e2e tests**, asserting directly
+   (not just implicitly) that one tenant's API key can never read or mutate another
+   tenant's flags/audit history.
 
 ## Repository layout
 
@@ -872,7 +882,7 @@ Roughly in the order I'd tackle them:
 ├── assignment-doc/            the take-home assignment spec this README responds to
 ├── docker/                    Dockerfile + docker-compose stack for local dev
 ├── iac/                       Terraform — see iac/README.md for the full module breakdown
-├── .github/workflows/ci.yml   format → lint → build → test → docker-publish
+├── .github/workflows/ci.yml   format → lint → build → {test, test-e2e} → docker-publish
 └── packages/
     ├── domain/                framework-free business logic (entities, use cases,
     │                          the deterministic rollout algorithm), built with tsup,

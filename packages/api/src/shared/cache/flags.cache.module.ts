@@ -1,4 +1,10 @@
-import { Global, Logger, Module } from '@nestjs/common';
+import {
+  Global,
+  Inject,
+  Logger,
+  Module,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { Cacheable } from 'cacheable';
 import { createKeyv, default as KeyvRedis } from '@keyv/redis';
 import { ConfigService } from '@nestjs/config';
@@ -37,4 +43,13 @@ const logger = new Logger('FlagsCacheModule');
   ],
   exports: [CACHE, FlagEvaluationCacheService],
 })
-export class FlagsCacheModule {}
+export class FlagsCacheModule implements OnModuleDestroy {
+  constructor(@Inject(CACHE) private readonly cache: Cacheable) {}
+
+  // Without this, the ioredis client behind the secondary store keeps its
+  // socket open past `app.close()` — see the matching note in
+  // FlagsDatabaseModule for why that matters for tests/CI specifically.
+  async onModuleDestroy(): Promise<void> {
+    await this.cache.disconnect();
+  }
+}

@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Inject, Module, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Kysely, PostgresDialect, sql } from 'kysely';
 import { Pool } from 'pg';
@@ -35,4 +35,14 @@ const KyselyProvider = {
   providers: [KyselyProvider],
   exports: [FLAGS_DB],
 })
-export class FlagsDatabaseModule {}
+export class FlagsDatabaseModule implements OnModuleDestroy {
+  constructor(@Inject(FLAGS_DB) private readonly db: FlagsPersistence) {}
+
+  // Without this, the underlying pg Pool keeps its sockets open past
+  // `app.close()` — harmless for a long-running server (which never calls
+  // close() on itself), but it leaves the process unable to exit on its own
+  // after tests close the app, e.g. in e2e suites and CI.
+  async onModuleDestroy(): Promise<void> {
+    await this.db.destroy();
+  }
+}

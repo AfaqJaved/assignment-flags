@@ -1,5 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { PikslotsConfigModule } from './shared/config/pikslots.config.module';
+import { FlagsConfigModule } from './shared/config/flags.config.module';
 import { FlagsDatabaseModule } from './shared/database/flags.database.module';
 import { ApiKeyAuthenticationMiddleware } from './shared/security/middleware/api.key.authentication.middleware';
 import { FlagsSecurityModule } from './shared/security/flags.security.module';
@@ -14,7 +14,7 @@ import { FlagsThrottlerModule } from './shared/rate-limit/flags.throttler.module
 @Module({
   imports: [
     FlagsSecurityModule,
-    PikslotsConfigModule,
+    FlagsConfigModule,
     FlagsDatabaseModule, // also runs the migrations
     FlagsCacheModule,
     FlagsThrottlerModule,

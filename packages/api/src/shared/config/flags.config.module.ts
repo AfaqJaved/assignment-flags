@@ -16,4 +16,4 @@ import { PrintLoadedEnv } from './print.env';
     }),
   ],
 })
-export class PikslotsConfigModule {}
+export class FlagsConfigModule {}
